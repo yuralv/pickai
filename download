@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { buildStoreLinks } from '../src/stores.js';
+
+test('builds search URLs for all five selected stores', () => {
+  const links = buildStoreLinks('흰색 무선 키보드 10만원 이하');
+  assert.deepEqual(links.map((item) => item.id), ['amazon', 'elevenst', 'coupang', 'aliexpress', 'temu']);
+  assert.equal(links.length, 5);
+  for (const link of links) {
+    const url = new URL(link.url);
+    assert.equal(url.protocol, 'https:');
+    assert.ok(url.hostname.length > 0);
+  }
+});
+
+test('encodes special characters safely in the search query', () => {
+  const [amazon, elevenst, coupang, ali, temu] = buildStoreLinks('키보드 & 마우스');
+  assert.equal(new URL(amazon.url).searchParams.get('k'), '키보드 & 마우스');
+  assert.equal(new URL(elevenst.url).searchParams.get('kwd'), '키보드 & 마우스');
+  assert.equal(new URL(coupang.url).searchParams.get('q'), '키보드 & 마우스');
+  assert.ok(ali.url.includes(encodeURIComponent('키보드 & 마우스')));
+  assert.equal(new URL(temu.url).searchParams.get('search_key'), '키보드 & 마우스');
+});
+
+test('limits search strings to 120 characters', () => {
+  const links = buildStoreLinks('x'.repeat(200));
+  assert.equal(new URL(links[0].url).searchParams.get('k').length, 120);
+});

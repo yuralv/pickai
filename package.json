@@ -1,0 +1,32 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { fallbackRecommendations, heuristicParse } from '../src/parser.js';
+
+test('parses common Korean shopping constraints', () => {
+  const parsed = heuristicParse('흰색 저소음 무선 기계식 키보드 10만원 이하');
+  assert.equal(parsed.category, '키보드');
+  assert.equal(parsed.color, 'white');
+  assert.equal(parsed.wireless, true);
+  assert.equal(parsed.silent, true);
+  assert.equal(parsed.maxPrice, 100000);
+});
+
+test('creates three distinct search directions', () => {
+  const parsed = heuristicParse('흰색 저소음 무선 기계식 키보드 10만원 이하');
+  const results = fallbackRecommendations('흰색 저소음 무선 기계식 키보드 10만원 이하', ['심플한 디자인'], parsed);
+  assert.equal(results.length, 3);
+  assert.equal(new Set(results.map((item) => item.title)).size, 3);
+  assert.ok(results.every((item) => item.searchQuery.length > 0));
+});
+
+test('does not repeat structured preference terms in generated search text', () => {
+  const text = '흰색 저소음 무선 기계식 키보드 10만원 이하';
+  const parsed = heuristicParse(text);
+  const results = fallbackRecommendations(text, ['심플한 디자인', 'RGB 조명은 싫어'], parsed);
+  const query = results[0].searchQuery;
+  assert.equal((query.match(/화이트/g) || []).length, 1);
+  assert.equal((query.match(/저소음/g) || []).length, 1);
+  assert.equal((query.match(/무선/g) || []).length, 1);
+  assert.ok(query.includes('기계식'));
+  assert.ok(query.includes('RGB 없는'));
+});
